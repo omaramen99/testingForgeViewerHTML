@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.css">
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+        <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+
+        <title>Autodesk Forge: Simple Viewer</title>
+        <style>
+
+        </style>
+    </head>
+    <body>
+
+        <div id="preview"></div>
+
+        <script>
+
+
+
+
+
+
+
+
+
+
+
+initViewer(document.getElementById('preview')).then(viewer => {
+    const urn = "dXJuOmFkc2sub2JqZWN0czpvcy5vYmplY3Q6bXktZmlyc3QtYXBwbHlpbmctZm9yZ2UtYXBwLWJ1Y2tldC9Gb3VyJTIwQmVuZCUyMFNpemVzLnJ2dA";
+
+
+     onModelSelected(viewer, urn)
+
+});
+
+
+
+
+
+
+
+
+
+async function onModelSelected(viewer, urn) {
+    const resp = await fetch(`http://localhost:8080/api/forge/models/${urn}/status`);
+    console.log(resp);
+        if (!resp.ok) {
+            throw new Error(await resp.text());
+        }
+        const status = await resp.json();
+        console.log(status);
+        switch (status.status) {
+            case 'n/a':
+                console.log("n/a");
+                break;
+            case 'inprogress':
+                console.log("inprogress");
+                break;
+            case 'failed':
+                console.log("failed");
+                break;
+            default:
+                console.log("success");
+                loadModel(viewer, urn);
+                break; 
+        }
+}
+
+
+
+
+
+async function getAccessToken(callback) {
+    try {
+
+
+        const resp = await fetch('http://localhost:8080/api/forge/auth');
+        if (!resp.ok) {
+            throw new Error(await resp.text());
+        }
+        const { access_token, expires_in } = await resp.json();
+        callback(access_token, expires_in);
+    } catch (err) {
+        alert('Could not obtain access token. See the console for more details.');
+        console.error(err);
+    }
+}
+
+function initViewer(container) {
+    return new Promise(function (resolve, reject) {
+        Autodesk.Viewing.Initializer({ getAccessToken }, function () {
+            const config = {
+                extensions: ['Autodesk.DocumentBrowser']
+            };
+            const viewer = new Autodesk.Viewing.GuiViewer3D(container, config);
+            viewer.start();
+            viewer.setTheme('light-theme');
+            resolve(viewer);
+        });
+    });
+}
+
+function loadModel(viewer, urn) {
+    return new Promise(function (resolve, reject) {
+        function onDocumentLoadSuccess(doc) {
+            console.log(doc);
+            console.log(doc.getRoot().getDefaultGeometry());
+            resolve(viewer.loadDocumentNode(doc, doc.getRoot().getDefaultGeometry()));
+        }
+        function onDocumentLoadFailure(code, message, errors) {
+            reject({ code, message, errors });
+        }
+
+        viewer.setLightPreset(0);
+
+        Autodesk.Viewing.Document.load("urn:"+urn, onDocumentLoadSuccess, onDocumentLoadFailure);
+
+    });
+}
+        </script>
+    </body>
+</html>
